@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: billing-letsencrypt #должно соответствовать значению metadata.name в манифесте Issuer
+  labels:
+    argocd.argoproj.io/instance: billing-ecp
+  name: web-ingress
+spec:
+  ingressClassName: nginx                       #указывается направление на nginx ingress controller
+  rules:
+    - host: billing-ecp.int.platform.tatar.ru
+      http:
+        paths:
+          - backend:
+              service:
+                name: service-ecp-billing-frontend-operator
+                port:
+                  number: 80
+            path: /operator
+            pathType: Prefix
+
+          - backend:
+              service:
+                name: service-ecp-billing-frontend-owner
+                port:
+                  number: 80
+            path: /owner
+            pathType: Prefix
+  tls:
+    - hosts:
+        - billing-ecp.int.platform.tatar.ru
+      secretName: billing-tls-cert
+
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    argocd.argoproj.io/instance: billing-ecp
+  name: billing-letsencrypt
+  namespace: billing-ecp
+spec:
+  acme:
+    email: zaripovtenet@yandex.ru
+    privateKeySecretRef:
+      name: billing-private-key
+    server: 'https://acme-v02.api.letsencrypt.org/directory'
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

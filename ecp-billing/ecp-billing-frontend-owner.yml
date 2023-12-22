@@ -1,0 +1,96 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: deployment-ecp-billing-frontend-owner
+  labels:
+    env : prod
+    app : main
+    tier: frontend
+spec:
+  selector:
+    matchLabels:
+      run: ecp-billing-frontend-owner
+  template:
+    metadata:
+      labels:
+        run: ecp-billing-frontend-owner
+    spec:
+      containers:
+        - name : ecp-billing-frontend-owner
+          image: registry.int.platform.tatar.ru/billing/ecp-billing-frontend:latest
+          imagePullPolicy: Always
+          env:
+            - name: FRONTEND_MODULE_NAME
+              value: ecp-billing-frontend
+            - name: FRONTEND_APP_TYPE
+              value: OWNER_APP
+            - name: FRONTEND_APP_TYPE_NGINX
+              value: owner
+            - name: CLIENTID
+              valueFrom:
+                secretKeyRef:
+                  name: billing-avanpost-secret
+                  key: client_id
+            - name: client_id
+              valueFrom:
+                secretKeyRef:
+                  name: billing-avanpost-secret
+                  key: client_id
+            - name: client_secret
+              valueFrom:
+                secretKeyRef:
+                  name: billing-avanpost-secret
+                  key: client_secret
+            - name: BACKEND_HOST
+              value: service-ecp-billing-api
+            - name: BACKEND_PORT
+              value: "8080"
+            - name: AVANPOST_DOMAIN
+              value: sso.int.platform.tatar.ru
+            - name: APPMODE
+              value: TEST
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "16Mi"
+            limits:
+              cpu: "300m"
+              memory: "128Mi"
+      imagePullSecrets:
+        - name: billing-harbor-secret
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: autoscaling-ecp-billing-frontend-owner
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: deployment-ecp-billing-frontend-owner
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 90
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-ecp-billing-frontend-owner
+spec:
+  selector:
+    run: ecp-billing-frontend-owner
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

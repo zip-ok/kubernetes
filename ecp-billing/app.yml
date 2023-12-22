@@ -1,0 +1,19 @@
+project: billing
+source:
+  repoURL: 'https://code.int.platform.tatar.ru/ecp/manifests/billing.git'
+  path: .
+  targetRevision: HEAD
+  plugin:
+    name: argocd-vault-plugin
+    env:
+      - name: AVP_SECRET
+        value: argocd-vault-billing
+destination:
+  server: 'https://kubernetes.default.svc'
+  namespace: billing-ecp
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  syncOptions:
+    - CreateNamespace=true
